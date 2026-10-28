@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Application Portal</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background: #f4f5f7; padding: 20px; color: #172b4d; }
+    .container { max-width: 480px; margin: 0 auto; background: #fff; padding: 25px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .field { margin-bottom: 14px; }
+    label { display: block; font-weight: 600; margin-bottom: 4px; font-size: 13px; }
+    input, select { width: 100%; padding: 8px; border: 1px solid #dfe1e6; border-radius: 4px; box-sizing: border-box; }
+    .row { display: flex; gap: 8px; }
+    .row .field { flex: 1; }
+    button { width: 100%; padding: 10px; background: #0052cc; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+    #status { margin-top: 15px; padding: 10px; border-radius: 4px; display: none; text-align: center; font-size: 14px; }
+    .success { background: #e3fcef; color: #006644; }
+    .error { background: #ffebe6; color: #bf2600; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h2>Application Form</h2>
+  <form id="appForm">
+    <div class="field">
+      <label>Title</label>
+      <select id="title" required>
+        <option value="">Select</option>
+        <option value="Mr">Mr</option>
+        <option value="Mrs">Mrs</option>
+        <option value="Miss">Miss</option>
+        <option value="Ms">Ms</option>
+      </select>
+    </div>
+
+    <div class="field"><label>First name</label><input type="text" id="firstName" required></div>
+    <div class="field"><label>Middle name</label><input type="text" id="middleName"></div>
+    <div class="field"><label>Last name</label><input type="text" id="lastName" required></div>
+
+    <label>Date of birth</label>
+    <div class="row">
+      <div class="field">
+        <select id="dobDay" required>
+          <option value="">Day</option>
+          <script>for(let i=1;i<=31;i++) document.write(`<option value="${i}">${i}</option>`);</script>
+        </select>
+      </div>
+      <div class="field">
+        <select id="dobMonth" required>
+          <option value="">Month</option>
+          <option value="1">Jan</option><option value="2">Feb</option><option value="3">Mar</option>
+          <option value="4">Apr</option><option value="5">May</option><option value="6">Jun</option>
+          <option value="7">Jul</option><option value="8">Aug</option><option value="9">Sep</option>
+          <option value="10">Oct</option><option value="11">Nov</option><option value="12">Dec</option>
+        </select>
+      </div>
+      <div class="field">
+        <select id="dobYear" required>
+          <option value="">Year</option>
+          <script>for(let i=2006;i>=1930;i--) document.write(`<option value="${i}">${i}</option>`);</script>
+        </select>
+      </div>
+    </div>
+
+    <div class="field"><label>Postcode</label><input type="text" id="postcode" required></div>
+    <div class="field">
+      <label>Residential status</label>
+      <select id="residentialStatus" required>
+        <option value="">Select</option>
+        <option value="Homeowner">Homeowner</option>
+        <option value="Tenant">Tenant</option>
+        <option value="Living with parents">Living with parents</option>
+      </select>
+    </div>
+
+    <div class="row">
+      <div class="field"><label>Years at address</label><input type="number" id="addressYears" min="0" required></div>
+      <div class="field"><label>Months at address</label><input type="number" id="addressMonths" min="0" max="11" required></div>
+    </div>
+
+    <div class="field">
+      <label>Marital status</label>
+      <select id="maritalStatus" required>
+        <option value="">Select</option>
+        <option value="Single">Single</option>
+        <option value="Married">Married</option>
+        <option value="Divorced">Divorced</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>Nationality</label>
+      <select id="nationality" required>
+        <option value="">Select</option>
+        <option value="British">British</option>
+        <option value="Irish">Irish</option>
+        <option value="Other">Other</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>Country of birth</label>
+      <select id="countryOfBirth" required>
+        <option value="">Select</option>
+        <option value="United Kingdom">United Kingdom</option>
+        <option value="Other">Other</option>
+      </select>
+    </div>
+
+    <div class="field"><label>Place of birth</label><input type="text" id="placeOfBirth" required></div>
+
+    <button type="submit">Submit Application</button>
+  </form>
+  <div id="status"></div>
+</div>
+
+<script>
+  document.getElementById('appForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const statusDiv = document.getElementById('status');
+    statusDiv.style.display = 'none';
+
+    const payload = {
+      title: document.getElementById('title').value,
+      firstName: document.getElementById('firstName').value,
+      middleName: document.getElementById('middleName').value,
+      lastName: document.getElementById('lastName').value,
+      dobDay: document.getElementById('dobDay').value,
+      dobMonth: document.getElementById('dobMonth').value,
+      dobYear: document.getElementById('dobYear').value,
+      postcode: document.getElementById('postcode').value,
+      residentialStatus: document.getElementById('residentialStatus').value,
+      addressYears: document.getElementById('addressYears').value,
+      addressMonths: document.getElementById('addressMonths').value,
+      maritalStatus: document.getElementById('maritalStatus').value,
+      nationality: document.getElementById('nationality').value,
+      countryOfBirth: document.getElementById('countryOfBirth').value,
+      placeOfBirth: document.getElementById('placeOfBirth').value
+    };
+
+    try {
+      const response = await fetch('/api/jobs/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ details: payload })
+      });
+
+      if (response.ok) {
+        statusDiv.className = 'status success';
+        statusDiv.innerText = 'Application submitted successfully!';
+      } else {
+        throw new Error('Failed to submit application');
+      }
+    } catch (err) {
+      statusDiv.className = 'status error';
+      statusDiv.innerText = err.message;
+    }
+    statusDiv.style.display = 'block';
+  });
+</script>
+
+</body>
+</html>
