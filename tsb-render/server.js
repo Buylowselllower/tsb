@@ -13,25 +13,34 @@ db.exec(`CREATE TABLE IF NOT EXISTS orders (
 
 const WORKER_KEY = process.env.WORKER_KEY || 'my_secret_worker_key';
 
-// 1. User submits details from Website A
-app.post('/api/orders', (req, res) => {
-  const id = crypto.randomUUID();
-  const detailsStr = typeof req.body.details === 'string' 
-    ? req.body.details 
-    : JSON.stringify(req.body.details || req.body);
+// Handle user form submissions (Supports both /api/orders and /api/jobs/create)
+const handleOrderSubmit = (req, res) => {
+  try {
+    const id = crypto.randomUUID();
+    const detailsData = req.body.details ? req.body.details : req.body;
+    const detailsStr = typeof detailsData === 'string' ? detailsData : JSON.stringify(detailsData);
 
-  db.prepare('INSERT INTO orders (id, details, created_at) VALUES (?,?,?)')
-    .run(id, detailsStr, Date.now());
-  res.json({ id });
-});
+    db.prepare('INSERT INTO orders (id, details, created_at) VALUES (?,?,?)')
+      .run(id, detailsStr, Date.now());
 
-// 2. Frontend polls status
+    console.log(`[ORDER CREATED] ID: ${id}`);
+    res.json({ id, success: true });
+  } catch (err) {
+    console.error('Database insert error:', err.message);
+    res.status(500).json({ error: 'Failed to create order' });
+  }
+};
+
+app.post('/api/orders', handleOrderSubmit);
+app.post('/api/jobs/create', handleOrderSubmit);
+
+// Frontend status polling
 app.get('/api/orders/:id', (req, res) => {
   const o = db.prepare('SELECT status, address FROM orders WHERE id=?').get(req.params.id);
   res.json(o || { status: 'not_found' });
 });
 
-// Worker auth middleware
+// Worker authentication middleware
 const auth = (req, res, next) => {
   const clientKey = req.headers['x-worker-key'];
   if (!WORKER_KEY || clientKey !== WORKER_KEY) {
@@ -40,15 +49,17 @@ const auth = (req, res, next) => {
   next();
 };
 
-// 3. Worker claims next job
+// Bot claims next job
 app.post('/api/worker/claim', auth, (req, res) => {
   const o = db.prepare(`SELECT * FROM orders WHERE status='pending' ORDER BY created_at LIMIT 1`).get();
   if (!o) return res.json(null);
+
   db.prepare(`UPDATE orders SET status='processing', claimed_at=? WHERE id=?`).run(Date.now(), o.id);
+  console.log(`[WORKER CLAIMED] Order ID: ${o.id}`);
   res.json(o);
 });
 
-// 4. Worker submits result
+// Bot completes job
 app.post('/api/worker/complete', auth, (req, res) => {
   const { id, address, error } = req.body;
   if (error) {
@@ -59,7 +70,6 @@ app.post('/api/worker/complete', auth, (req, res) => {
   res.sendStatus(200);
 });
 
-// Listen on Render's dynamic PORT or fallback to 3000 locally
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
