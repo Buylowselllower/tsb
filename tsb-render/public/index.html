@@ -11,17 +11,18 @@
     input, select { width: 100%; padding: 8px; border: 1px solid #dfe1e6; border-radius: 4px; box-sizing: border-box; }
     .row { display: flex; gap: 8px; }
     .row .field { flex: 1; }
-    button { width: 100%; padding: 10px; background: #0052cc; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; margin-top: 10px; }
-    #status { margin-top: 15px; padding: 10px; border-radius: 4px; display: none; text-align: center; font-size: 14px; }
-    .success { background: #e3fcef; color: #006644; }
-    .error { background: #ffebe6; color: #bf2600; }
+    button { width: 100%; padding: 12px; background: #0052cc; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+    button:disabled { background: #a5adba; cursor: not-allowed; }
+    #status { margin-top: 15px; padding: 10px; border-radius: 4px; display: none; text-align: center; font-size: 14px; word-break: break-all; }
+    .success { background: #e3fcef; color: #006644; border: 1px solid #abf5d1; }
+    .error { background: #ffebe6; color: #bf2600; border: 1px solid #ffbdad; }
   </style>
 </head>
 <body>
 
 <div class="container">
   <h2>Application Form</h2>
-  <form id="appForm">
+  <form id="appForm" onsubmit="return false;">
     <div class="field">
       <label>Title</label>
       <select id="title" required>
@@ -109,7 +110,7 @@
 
     <div class="field"><label>Place of birth</label><input type="text" id="placeOfBirth" required></div>
 
-    <button type="submit">Submit Application</button>
+    <button type="submit" id="submitBtn">Submit Application</button>
   </form>
   <div id="status"></div>
 </div>
@@ -117,7 +118,13 @@
 <script>
   document.getElementById('appForm').addEventListener('submit', async (e) => {
     e.preventDefault();
+    e.stopPropagation();
+
+    const submitBtn = document.getElementById('submitBtn');
     const statusDiv = document.getElementById('status');
+    
+    submitBtn.disabled = true;
+    submitBtn.innerText = 'Sending to Server...';
     statusDiv.style.display = 'none';
 
     const payload = {
@@ -138,23 +145,30 @@
       placeOfBirth: document.getElementById('placeOfBirth').value
     };
 
-  try {
-  const response = await fetch('/api/orders', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ details: payload })
-  });
+    try {
+      const response = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ details: payload })
+      });
 
-  if (response.ok) {
-    statusDiv.className = 'status success';
-    statusDiv.innerText = 'Application submitted successfully!';
-  } else {
-    throw new Error('Failed to submit application');
-  }
-} catch (err) {
-  statusDiv.className = 'status error';
-  statusDiv.innerText = err.message;
-}
+      const data = await response.json();
+
+      if (response.ok && data.id) {
+        statusDiv.className = 'status success';
+        statusDiv.innerText = `✅ Order Queued Successfully! Order ID: ${data.id}`;
+      } else {
+        throw new Error(data.error || `Server HTTP ${response.status}`);
+      }
+    } catch (err) {
+      statusDiv.className = 'status error';
+      statusDiv.innerText = `❌ Error: ${err.message}`;
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.innerText = 'Submit Application';
+      statusDiv.style.display = 'block';
+    }
+  });
 </script>
 
 </body>
