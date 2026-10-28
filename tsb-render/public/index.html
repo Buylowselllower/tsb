@@ -138,25 +138,23 @@
       placeOfBirth: document.getElementById('placeOfBirth').value
     };
 
-    try {
-      const response = await fetch('/api/jobs/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ details: payload })
-      });
-
-      if (response.ok) {
-        statusDiv.className = 'status success';
-        statusDiv.innerText = 'Application submitted successfully!';
-      } else {
-        throw new Error('Failed to submit application');
-      }
-    } catch (err) {
-      statusDiv.className = 'status error';
-      statusDiv.innerText = err.message;
-    }
-    statusDiv.style.display = 'block';
+  try {
+  const response = await fetch('/api/orders', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ details: payload })
   });
+
+  if (response.ok) {
+    statusDiv.className = 'status success';
+    statusDiv.innerText = 'Application submitted successfully!';
+  } else {
+    throw new Error('Failed to submit application');
+  }
+} catch (err) {
+  statusDiv.className = 'status error';
+  statusDiv.innerText = err.message;
+}
 </script>
 
 </body>
