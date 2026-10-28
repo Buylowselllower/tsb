@@ -31,6 +31,9 @@
         <option value="Mrs">Mrs</option>
         <option value="Miss">Miss</option>
         <option value="Ms">Ms</option>
+        <option value="Mx">Mx</option>
+        <option value="Dr">Dr</option>
+        <option value="Reverend">Reverend</option>
       </select>
     </div>
 
@@ -63,14 +66,21 @@
       </div>
     </div>
 
-    <div class="field"><label>Postcode</label><input type="text" id="postcode" required></div>
+    <div class="row">
+      <div class="field"><label>House / Street No.</label><input type="text" id="houseNumber" placeholder="e.g. 1 or 24B" required></div>
+      <div class="field"><label>Postcode</label><input type="text" id="postcode" placeholder="e.g. BD3 9TD" required></div>
+    </div>
+
     <div class="field">
       <label>Residential status</label>
       <select id="residentialStatus" required>
         <option value="">Select</option>
-        <option value="Homeowner">Homeowner</option>
-        <option value="Tenant">Tenant</option>
-        <option value="Living with parents">Living with parents</option>
+        <option value="Home Owner (with Mortgage)">Home Owner (with Mortgage)</option>
+        <option value="Home Owner (without Mortgage)">Home Owner (without Mortgage)</option>
+        <option value="Tenant (Private)">Tenant (Private)</option>
+        <option value="Tenant (Council)">Tenant (Council)</option>
+        <option value="Living with Parents">Living with Parents</option>
+        <option value="Other">Other</option>
       </select>
     </div>
 
@@ -84,8 +94,11 @@
       <select id="maritalStatus" required>
         <option value="">Select</option>
         <option value="Single">Single</option>
-        <option value="Married">Married</option>
-        <option value="Divorced">Divorced</option>
+        <option value="Married / Civil Partnership">Married / Civil Partnership</option>
+        <option value="Widowed">Widowed</option>
+        <option value="Divorced / Dissolved Civil Partnership">Divorced / Dissolved Civil Partnership</option>
+        <option value="Separated">Separated</option>
+        <option value="Cohabiting">Cohabiting</option>
       </select>
     </div>
 
@@ -135,6 +148,7 @@
       dobDay: document.getElementById('dobDay').value,
       dobMonth: document.getElementById('dobMonth').value,
       dobYear: document.getElementById('dobYear').value,
+      houseNumber: document.getElementById('houseNumber').value,
       postcode: document.getElementById('postcode').value,
       residentialStatus: document.getElementById('residentialStatus').value,
       addressYears: document.getElementById('addressYears').value,
