@@ -5,13 +5,14 @@
   <title>Application Portal</title>
   <style>
     body { font-family: system-ui, sans-serif; background: #f4f5f7; padding: 20px; color: #172b4d; }
-    .container { max-width: 480px; margin: 0 auto; background: #fff; padding: 25px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .container { max-width: 500px; margin: 0 auto; background: #fff; padding: 25px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
     .field { margin-bottom: 14px; }
+    .section-title { font-size: 15px; font-weight: bold; margin-top: 18px; margin-bottom: 10px; border-bottom: 1px solid #dfe1e6; padding-bottom: 5px; color: #091e42; }
     label { display: block; font-weight: 600; margin-bottom: 4px; font-size: 13px; }
     input, select { width: 100%; padding: 8px; border: 1px solid #dfe1e6; border-radius: 4px; box-sizing: border-box; }
     .row { display: flex; gap: 8px; }
     .row .field { flex: 1; }
-    button { width: 100%; padding: 12px; background: #0052cc; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+    button { width: 100%; padding: 12px; background: #0052cc; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; margin-top: 15px; }
     button:disabled { background: #a5adba; cursor: not-allowed; }
     #status { margin-top: 15px; padding: 10px; border-radius: 4px; display: none; text-align: center; font-size: 14px; word-break: break-all; }
     .success { background: #e3fcef; color: #006644; border: 1px solid #abf5d1; }
@@ -23,6 +24,8 @@
 <div class="container">
   <h2>Application Form</h2>
   <form id="appForm" onsubmit="return false;">
+    
+    <div class="section-title">Personal Details</div>
     <div class="field">
       <label>Title</label>
       <select id="title" required>
@@ -38,7 +41,7 @@
     </div>
 
     <div class="field"><label>First name</label><input type="text" id="firstName" required></div>
-    <div class="field"><label>Middle name</label><input type="text" id="middleName"></div>
+    <div class="field"><label>Middle name (optional)</label><input type="text" id="middleName"></div>
     <div class="field"><label>Last name</label><input type="text" id="lastName" required></div>
 
     <label>Date of birth</label>
@@ -66,9 +69,18 @@
       </div>
     </div>
 
+    <div class="section-title">Address History</div>
     <div class="row">
-      <div class="field"><label>House / Street No.</label><input type="text" id="houseNumber" placeholder="e.g. 1 or 24B" required></div>
-      <div class="field"><label>Postcode</label><input type="text" id="postcode" placeholder="e.g. BD3 9TD" required></div>
+      <div class="field"><label>House Number</label><input type="text" id="houseNumber" placeholder="e.g. 24" required></div>
+      <div class="field"><label>House Name (optional)</label><input type="text" id="houseName" placeholder="e.g. Rose Cottage"></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>Flat Number (optional)</label><input type="text" id="flatNumber" placeholder="e.g. Flat 3B"></div>
+      <div class="field"><label>Street</label><input type="text" id="street" placeholder="e.g. Gloucester Avenue" required></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>Town / City</label><input type="text" id="townCity" placeholder="e.g. Bradford" required></div>
+      <div class="field"><label>Postcode</label><input type="text" id="postcode" placeholder="e.g. BD3 7LJ" required></div>
     </div>
 
     <div class="field">
@@ -89,6 +101,7 @@
       <div class="field"><label>Months at address</label><input type="number" id="addressMonths" min="0" max="11" required></div>
     </div>
 
+    <div class="section-title">Background Details</div>
     <div class="field">
       <label>Marital status</label>
       <select id="maritalStatus" required>
@@ -149,6 +162,10 @@
       dobMonth: document.getElementById('dobMonth').value,
       dobYear: document.getElementById('dobYear').value,
       houseNumber: document.getElementById('houseNumber').value,
+      houseName: document.getElementById('houseName').value,
+      flatNumber: document.getElementById('flatNumber').value,
+      street: document.getElementById('street').value,
+      townCity: document.getElementById('townCity').value,
       postcode: document.getElementById('postcode').value,
       residentialStatus: document.getElementById('residentialStatus').value,
       addressYears: document.getElementById('addressYears').value,
