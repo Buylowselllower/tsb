@@ -21,11 +21,28 @@
     #historyHint { display: none; font-size: 13px; padding: 8px 10px; border-radius: 4px; margin-bottom: 10px; }
     #historyHint.incomplete { display: block; background: #fffae6; color: #7a5b00; border: 1px solid #ffe380; }
     #historyHint.complete { display: block; background: #e3fcef; color: #006644; border: 1px solid #abf5d1; }
+
+    /* Interview page */
+    .muted { font-size: 13px; color: #5e6c84; margin: 0 0 6px; }
+    .day-list { display: flex; flex-wrap: wrap; gap: 8px; }
+    .slot-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .day-btn, .slot-btn { width: auto; margin: 0; padding: 8px 12px; background: #fff; color: #172b4d; border: 1px solid #dfe1e6; border-radius: 4px; font-weight: 600; font-size: 13px; }
+    .slot-btn { width: 100%; }
+    .day-btn:hover, .slot-btn:hover:not(:disabled) { border-color: #0052cc; }
+    .day-btn.active { border-color: #0052cc; box-shadow: inset 0 0 0 1px #0052cc; color: #0052cc; }
+    .slot-btn.selected { background: #0052cc; color: #fff; border-color: #0052cc; }
+    .slot-btn:disabled { background: #f4f5f7; color: #a5adba; border-color: #dfe1e6; cursor: not-allowed; }
+    .selected-list { list-style: none; padding: 0; margin: 0 0 4px; }
+    .selected-list li { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; margin-bottom: 6px; background: #f4f5f7; border-radius: 4px; font-size: 14px; }
+    .selected-list li.empty { color: #5e6c84; background: none; padding-left: 0; }
+    .remove-btn { width: auto; margin: 0; padding: 0 8px; background: none; color: #bf2600; font-size: 18px; line-height: 1; }
+    #interviewStatus { margin-top: 15px; padding: 10px; border-radius: 4px; display: none; text-align: center; font-size: 14px; }
   </style>
 </head>
 <body>
 
 <div class="container">
+  <div id="page1">
   <h2>Application Form</h2>
   <form id="appForm" onsubmit="return false;">
 
@@ -144,6 +161,25 @@
     <button type="submit" id="submitBtn">Submit Application</button>
   </form>
   <div id="status"></div>
+  </div>
+
+  <!-- Page 2: shown after a successful submit -->
+  <div id="page2" hidden>
+    <h2>What day are you available for an interview?</h2>
+    <p class="muted">Pick a day, then choose one or more 1-hour slots. Times are in your local time.</p>
+
+    <div class="section-title">1. Choose a day</div>
+    <div id="dayList" class="day-list"></div>
+
+    <div class="section-title" id="slotTitle">2. Choose your 1-hour slots</div>
+    <div id="slotGrid" class="slot-grid"></div>
+
+    <div class="section-title">Your selected slots</div>
+    <ul id="selectedList" class="selected-list"></ul>
+
+    <button type="button" id="confirmInterview" disabled>Confirm availability</button>
+    <div id="interviewStatus"></div>
+  </div>
 </div>
 
 <script>
@@ -306,6 +342,161 @@
     }
   });
 
+  // ---------- Interview page (page 2) ----------
+  const INTERVIEW_ENDPOINT = '/api/interviews'; // TODO: point this at your backend
+  const DAYS_TO_SHOW = 14;     // how many days are offered
+  const WEEKDAYS_ONLY = true;  // set to false to include weekends
+  const FIRST_HOUR = 9;        // first slot starts at 09:00
+  const LAST_HOUR = 17;        // last slot ends at 17:00 (16:00 - 17:00)
+
+  const page1 = document.getElementById('page1');
+  const page2 = document.getElementById('page2');
+  const dayList = document.getElementById('dayList');
+  const slotGrid = document.getElementById('slotGrid');
+  const slotTitle = document.getElementById('slotTitle');
+  const selectedList = document.getElementById('selectedList');
+  const confirmBtn = document.getElementById('confirmInterview');
+  const interviewStatus = document.getElementById('interviewStatus');
+
+  let orderId = null;
+  let activeDay = null;      // 'YYYY-MM-DD' of the day being viewed
+  const picked = new Map();  // 'YYYY-MM-DD' -> Set of start hours
+
+  const pad = n => String(n).padStart(2, '0');
+  const dateKey = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const hourLabel = h => `${pad(h)}:00`;
+  const dayLabel = d => d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+
+  const interviewDays = (() => {
+    const days = [];
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    while (days.length < DAYS_TO_SHOW) {
+      const dow = d.getDay();
+      if (!WEEKDAYS_ONLY || (dow !== 0 && dow !== 6)) days.push(new Date(d));
+      d.setDate(d.getDate() + 1);
+    }
+    return days;
+  })();
+  const dayByKey = Object.fromEntries(interviewDays.map(d => [dateKey(d), d]));
+
+  function getSelectedSlots() {
+    const slots = [];
+    [...picked.keys()].sort().forEach(key => {
+      [...picked.get(key)].sort((a, b) => a - b).forEach(h => {
+        slots.push({ date: key, start: hourLabel(h), end: hourLabel(h + 1) });
+      });
+    });
+    return slots;
+  }
+
+  function toggleSlot(h) {
+    const set = picked.get(activeDay) || new Set();
+    if (set.has(h)) set.delete(h); else set.add(h);
+    if (set.size) picked.set(activeDay, set); else picked.delete(activeDay);
+    renderInterview();
+  }
+
+  function renderInterview() {
+    // Day buttons
+    dayList.innerHTML = '';
+    interviewDays.forEach(d => {
+      const key = dateKey(d);
+      const count = picked.get(key) ? picked.get(key).size : 0;
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'day-btn' + (key === activeDay ? ' active' : '');
+      btn.textContent = dayLabel(d) + (count ? ` (${count})` : '');
+      btn.addEventListener('click', () => { activeDay = key; renderInterview(); });
+      dayList.appendChild(btn);
+    });
+
+    // Hourly slots for the active day
+    slotGrid.innerHTML = '';
+    const day = dayByKey[activeDay];
+    slotTitle.textContent = `2. Choose your 1-hour slots on ${dayLabel(day)}`;
+    const now = new Date();
+    for (let h = FIRST_HOUR; h < LAST_HOUR; h++) {
+      const start = new Date(day);
+      start.setHours(h, 0, 0, 0);
+      const selected = picked.has(activeDay) && picked.get(activeDay).has(h);
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'slot-btn' + (selected ? ' selected' : '');
+      btn.textContent = `${hourLabel(h)} – ${hourLabel(h + 1)}`;
+      btn.disabled = start <= now; // can't pick a slot that has already started
+      btn.setAttribute('aria-pressed', selected ? 'true' : 'false');
+      btn.addEventListener('click', () => toggleSlot(h));
+      slotGrid.appendChild(btn);
+    }
+
+    // Summary of everything picked
+    const slots = getSelectedSlots();
+    selectedList.innerHTML = '';
+    if (!slots.length) {
+      const li = document.createElement('li');
+      li.className = 'empty';
+      li.textContent = 'No slots selected yet.';
+      selectedList.appendChild(li);
+    }
+    slots.forEach(s => {
+      const li = document.createElement('li');
+      li.textContent = `${dayLabel(dayByKey[s.date])}, ${s.start} – ${s.end}`;
+      const rm = document.createElement('button');
+      rm.type = 'button';
+      rm.className = 'remove-btn';
+      rm.setAttribute('aria-label', 'Remove this slot');
+      rm.textContent = '×';
+      rm.addEventListener('click', () => {
+        const set = picked.get(s.date);
+        set.delete(Number(s.start.slice(0, 2)));
+        if (!set.size) picked.delete(s.date);
+        renderInterview();
+      });
+      li.appendChild(rm);
+      selectedList.appendChild(li);
+    });
+    confirmBtn.disabled = slots.length === 0;
+  }
+
+  function showInterviewPage(id) {
+    orderId = id;
+    activeDay = dateKey(interviewDays[0]);
+    page1.hidden = true;
+    page2.hidden = false;
+    renderInterview();
+    window.scrollTo(0, 0);
+  }
+
+  confirmBtn.addEventListener('click', async () => {
+    confirmBtn.disabled = true;
+    confirmBtn.innerText = 'Sending...';
+    interviewStatus.style.display = 'none';
+    try {
+      const res = await fetch(INTERVIEW_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          slots: getSelectedSlots()
+        })
+      });
+      if (!res.ok) {
+        let msg = `Server HTTP ${res.status}`;
+        try { msg = (await res.json()).error || msg; } catch (e) {}
+        throw new Error(msg);
+      }
+      page2.innerHTML = '<h2>Thank you!</h2><p class="muted">We’ve received your application and your interview availability.</p>';
+    } catch (err) {
+      interviewStatus.className = 'error';
+      interviewStatus.innerText = `❌ Error: ${err.message}`;
+      interviewStatus.style.display = 'block';
+      confirmBtn.disabled = false;
+      confirmBtn.innerText = 'Confirm availability';
+    }
+  });
+
   // ---------- Submit ----------
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -373,8 +564,7 @@
       const data = await response.json();
 
       if (response.ok && data.id) {
-        statusDiv.className = 'success';
-        statusDiv.innerText = `✅ Order Queued Successfully! Order ID: ${data.id}`;
+        showInterviewPage(data.id); // switch to page 2
       } else {
         throw new Error(data.error || `Server HTTP ${response.status}`);
       }
