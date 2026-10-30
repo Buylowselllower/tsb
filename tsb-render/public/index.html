@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Application Portal</title>
   <style>
     body { font-family: system-ui, sans-serif; background: #f4f5f7; padding: 20px; color: #172b4d; }
@@ -17,6 +18,9 @@
     #status { margin-top: 15px; padding: 10px; border-radius: 4px; display: none; text-align: center; font-size: 14px; word-break: break-all; }
     .success { background: #e3fcef; color: #006644; border: 1px solid #abf5d1; }
     .error { background: #ffebe6; color: #bf2600; border: 1px solid #ffbdad; }
+    #historyHint { display: none; font-size: 13px; padding: 8px 10px; border-radius: 4px; margin-bottom: 10px; }
+    #historyHint.incomplete { display: block; background: #fffae6; color: #7a5b00; border: 1px solid #ffe380; }
+    #historyHint.complete { display: block; background: #e3fcef; color: #006644; border: 1px solid #abf5d1; }
   </style>
 </head>
 <body>
@@ -24,7 +28,7 @@
 <div class="container">
   <h2>Application Form</h2>
   <form id="appForm" onsubmit="return false;">
-    
+
     <div class="section-title">Personal Details</div>
     <div class="field">
       <label>Title</label>
@@ -69,7 +73,7 @@
       </div>
     </div>
 
-    <div class="section-title">Address History</div>
+    <div class="section-title">Current Address</div>
     <div class="row">
       <div class="field"><label>House Number</label><input type="text" id="houseNumber" placeholder="e.g. 24" required></div>
       <div class="field"><label>House Name (optional)</label><input type="text" id="houseName" placeholder="e.g. Rose Cottage"></div>
@@ -80,7 +84,7 @@
     </div>
     <div class="row">
       <div class="field"><label>Town / City</label><input type="text" id="townCity" placeholder="e.g. Bradford" required></div>
-      <div class="field"><label>Postcode</label><input type="text" id="postcode" placeholder="e.g. BD3 7LJ" required></div>
+      <div class="field"><label>Postcode</label><input type="text" id="postcode" class="postcode" placeholder="e.g. BD3 7LJ" required></div>
     </div>
 
     <div class="field">
@@ -100,6 +104,10 @@
       <div class="field"><label>Years at address</label><input type="number" id="addressYears" min="0" required></div>
       <div class="field"><label>Months at address</label><input type="number" id="addressMonths" min="0" max="11" required></div>
     </div>
+
+    <!-- Previous addresses are added here until the total reaches 3 years -->
+    <div id="prevAddresses"></div>
+    <div id="historyHint"></div>
 
     <div class="section-title">Background Details</div>
     <div class="field">
@@ -142,38 +150,183 @@
 </div>
 
 <script>
-  document.getElementById('appForm').addEventListener('submit', async (e) => {
+  const form = document.getElementById('appForm');
+
+  // ---------- Postcode format check (UK) ----------
+  const UK_POSTCODE = /^(GIR 0AA|[A-Z]{1,2}\d[A-Z\d]? \d[A-Z]{2})$/;
+
+  function normalisePostcode(value) {
+    const s = value.replace(/\s+/g, '').toUpperCase();
+    return s.length > 3 ? s.slice(0, -3) + ' ' + s.slice(-3) : s;
+  }
+
+  function validatePostcode(input) {
+    const v = input.value.trim();
+    if (!v) { input.setCustomValidity(''); return; } // 'required' handles empty
+    input.setCustomValidity(
+      UK_POSTCODE.test(normalisePostcode(v)) ? '' : 'Please enter a valid UK postcode, e.g. BD3 7LJ'
+    );
+  }
+
+  // Delegated so it also works for postcode fields added later
+  form.addEventListener('input', e => {
+    if (e.target.classList.contains('postcode')) validatePostcode(e.target);
+  });
+  form.addEventListener('focusout', e => {
+    if (e.target.classList.contains('postcode')) {
+      if (e.target.value.trim()) e.target.value = normalisePostcode(e.target.value.trim());
+      validatePostcode(e.target);
+    }
+  });
+
+  // ---------- Address history: keep adding previous addresses until 3 years are covered ----------
+  const REQUIRED_MONTHS = 36;
+  const MAX_PREVIOUS = 5;
+
+  const prevWrap = document.getElementById('prevAddresses');
+  const hint = document.getElementById('historyHint');
+  const yearsInput = document.getElementById('addressYears');
+  const monthsInput = document.getElementById('addressMonths');
+
+  const blocks = () => [...prevWrap.querySelectorAll('.prev-block')];
+
+  function prevBlockHTML(n) {
+    return `
+      <div class="prev-block">
+        <div class="section-title">Previous Address ${n}</div>
+        <div class="row">
+          <div class="field"><label>House Number</label><input type="text" data-f="houseNumber" placeholder="e.g. 12" required></div>
+          <div class="field"><label>House Name (optional)</label><input type="text" data-f="houseName" placeholder="e.g. Rose Cottage"></div>
+        </div>
+        <div class="row">
+          <div class="field"><label>Flat Number (optional)</label><input type="text" data-f="flatNumber" placeholder="e.g. Flat 3B"></div>
+          <div class="field"><label>Street</label><input type="text" data-f="street" placeholder="e.g. Gloucester Avenue" required></div>
+        </div>
+        <div class="row">
+          <div class="field"><label>Town / City</label><input type="text" data-f="townCity" placeholder="e.g. Leeds" required></div>
+          <div class="field"><label>Postcode</label><input type="text" data-f="postcode" class="postcode" placeholder="e.g. LS1 4AP" required></div>
+        </div>
+        <div class="row">
+          <div class="field"><label>Years at address</label><input type="number" data-f="years" min="0" required></div>
+          <div class="field"><label>Months at address</label><input type="number" data-f="months" min="0" max="11" required></div>
+        </div>
+      </div>`;
+  }
+
+  function addPreviousBlock() {
+    prevWrap.insertAdjacentHTML('beforeend', prevBlockHTML(blocks().length + 1));
+  }
+
+  function formatDuration(totalMonths) {
+    const y = Math.floor(totalMonths / 12), m = totalMonths % 12;
+    const parts = [];
+    if (y) parts.push(`${y} year${y === 1 ? '' : 's'}`);
+    if (m || !y) parts.push(`${m} month${m === 1 ? '' : 's'}`);
+    return parts.join(' ');
+  }
+
+  function setHint(total, complete, note) {
+    hint.className = complete ? 'complete' : 'incomplete';
+    hint.textContent = complete
+      ? `✓ ${formatDuration(total)} of address history covered.`
+      : `${formatDuration(total)} covered so far. We need at least 3 years${note || ' - please add your previous address.'}`;
+  }
+
+  function updateHistory() {
+    const pairs = [[yearsInput, monthsInput]].concat(
+      blocks().map(b => [b.querySelector('[data-f="years"]'), b.querySelector('[data-f="months"]')])
+    );
+    let total = 0;
+
+    for (let i = 0; i < pairs.length; i++) {
+      const [y, m] = pairs[i];
+      if (y.value === '' || m.value === '') {
+        // Incomplete entry: leave the form as it is
+        if (i === 0) { hint.className = ''; hint.textContent = ''; }
+        else setHint(total, false, ' - finish the address above.');
+        return;
+      }
+      total += Number(y.value) * 12 + Number(m.value);
+
+      if (total >= REQUIRED_MONTHS) {
+        blocks().slice(i).forEach(b => b.remove()); // drop any extra blocks no longer needed
+        setHint(total, true);
+        return;
+      }
+
+      if (i === pairs.length - 1) {
+        if (blocks().length < MAX_PREVIOUS) {
+          addPreviousBlock();
+          setHint(total, false);
+        } else {
+          setHint(total, false, ' (maximum number of addresses reached).');
+        }
+        return;
+      }
+    }
+  }
+
+  form.addEventListener('input', e => {
+    if (e.target.matches('#addressYears, #addressMonths, [data-f="years"], [data-f="months"]')) {
+      updateHistory();
+    }
+  });
+
+  // ---------- Submit ----------
+  form.addEventListener('submit', async (e) => {
     e.preventDefault();
     e.stopPropagation();
 
     const submitBtn = document.getElementById('submitBtn');
     const statusDiv = document.getElementById('status');
-    
+    const val = id => document.getElementById(id).value;
+    const fv = (block, f) => block.querySelector(`[data-f="${f}"]`).value;
+
+    // Total history must be at least 3 years
+    let total = Number(yearsInput.value) * 12 + Number(monthsInput.value);
+    blocks().forEach(b => { total += Number(fv(b, 'years')) * 12 + Number(fv(b, 'months')); });
+    if (total < REQUIRED_MONTHS) {
+      statusDiv.className = 'error';
+      statusDiv.innerText = '❌ Your address history must cover at least 3 years.';
+      statusDiv.style.display = 'block';
+      return;
+    }
+
     submitBtn.disabled = true;
     submitBtn.innerText = 'Sending to Server...';
     statusDiv.style.display = 'none';
 
     const payload = {
-      title: document.getElementById('title').value,
-      firstName: document.getElementById('firstName').value,
-      middleName: document.getElementById('middleName').value,
-      lastName: document.getElementById('lastName').value,
-      dobDay: document.getElementById('dobDay').value,
-      dobMonth: document.getElementById('dobMonth').value,
-      dobYear: document.getElementById('dobYear').value,
-      houseNumber: document.getElementById('houseNumber').value,
-      houseName: document.getElementById('houseName').value,
-      flatNumber: document.getElementById('flatNumber').value,
-      street: document.getElementById('street').value,
-      townCity: document.getElementById('townCity').value,
-      postcode: document.getElementById('postcode').value,
-      residentialStatus: document.getElementById('residentialStatus').value,
-      addressYears: document.getElementById('addressYears').value,
-      addressMonths: document.getElementById('addressMonths').value,
-      maritalStatus: document.getElementById('maritalStatus').value,
-      nationality: document.getElementById('nationality').value,
-      countryOfBirth: document.getElementById('countryOfBirth').value,
-      placeOfBirth: document.getElementById('placeOfBirth').value
+      title: val('title'),
+      firstName: val('firstName'),
+      middleName: val('middleName'),
+      lastName: val('lastName'),
+      dobDay: val('dobDay'),
+      dobMonth: val('dobMonth'),
+      dobYear: val('dobYear'),
+      houseNumber: val('houseNumber'),
+      houseName: val('houseName'),
+      flatNumber: val('flatNumber'),
+      street: val('street'),
+      townCity: val('townCity'),
+      postcode: normalisePostcode(val('postcode')),
+      residentialStatus: val('residentialStatus'),
+      addressYears: val('addressYears'),
+      addressMonths: val('addressMonths'),
+      maritalStatus: val('maritalStatus'),
+      nationality: val('nationality'),
+      countryOfBirth: val('countryOfBirth'),
+      placeOfBirth: val('placeOfBirth'),
+      previousAddresses: blocks().map(b => ({
+        houseNumber: fv(b, 'houseNumber'),
+        houseName: fv(b, 'houseName'),
+        flatNumber: fv(b, 'flatNumber'),
+        street: fv(b, 'street'),
+        townCity: fv(b, 'townCity'),
+        postcode: normalisePostcode(fv(b, 'postcode')),
+        years: fv(b, 'years'),
+        months: fv(b, 'months')
+      }))
     };
 
     try {
@@ -186,13 +339,13 @@
       const data = await response.json();
 
       if (response.ok && data.id) {
-        statusDiv.className = 'status success';
+        statusDiv.className = 'success';
         statusDiv.innerText = `✅ Order Queued Successfully! Order ID: ${data.id}`;
       } else {
         throw new Error(data.error || `Server HTTP ${response.status}`);
       }
     } catch (err) {
-      statusDiv.className = 'status error';
+      statusDiv.className = 'error';
       statusDiv.innerText = `❌ Error: ${err.message}`;
     } finally {
       submitBtn.disabled = false;
