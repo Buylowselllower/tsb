@@ -37,6 +37,12 @@
     .selected-list li.empty { color: #5e6c84; background: none; padding-left: 0; }
     .remove-btn { width: auto; margin: 0; padding: 0 8px; background: none; color: #bf2600; font-size: 18px; line-height: 1; }
     #interviewStatus { margin-top: 15px; padding: 10px; border-radius: 4px; display: none; text-align: center; font-size: 14px; }
+
+    /* Work permission choice boxes */
+    .choice-row { display: flex; gap: 8px; margin-bottom: 14px; }
+    .choice { flex: 1; display: flex; align-items: center; gap: 8px; margin: 0; padding: 10px; border: 1px solid #dfe1e6; border-radius: 4px; font-weight: 600; font-size: 13px; cursor: pointer; }
+    .choice input { width: auto; margin: 0; padding: 0; }
+    .choice:has(input:checked) { border-color: #0052cc; background: #f0f5ff; }
   </style>
 </head>
 <body>
@@ -151,12 +157,39 @@
       <label>Country of birth</label>
       <select id="countryOfBirth" required>
         <option value="">Select</option>
-        <option value="United Kingdom">United Kingdom</option>
-        <option value="Other">Other</option>
       </select>
     </div>
 
     <div class="field"><label>Place of birth</label><input type="text" id="placeOfBirth" required></div>
+
+    <!-- Shown only when nationality is not United Kingdom -->
+    <div id="ukStatusSection" hidden>
+      <div class="section-title">Time in the UK</div>
+
+      <label>When did you arrive in the UK?</label>
+      <div class="row">
+        <div class="field">
+          <select id="arrivalMonth" aria-label="Arrival month">
+            <option value="">Month</option>
+          </select>
+        </div>
+        <div class="field">
+          <select id="arrivalYear" aria-label="Arrival year">
+            <option value="">Year</option>
+          </select>
+        </div>
+      </div>
+
+      <label>How long do you have permission to work in the UK?</label>
+      <div class="choice-row">
+        <label class="choice"><input type="radio" name="workPermission" value="Indefinitely"> Indefinitely</label>
+        <label class="choice"><input type="radio" name="workPermission" value="Visa expiry date"> Visa expiry date</label>
+      </div>
+      <div class="field" id="visaExpiryField" hidden>
+        <label for="visaExpiry">Visa expiry date</label>
+        <input type="date" id="visaExpiry">
+      </div>
+    </div>
 
     <button type="submit" id="submitBtn">Submit Application</button>
   </form>
@@ -211,16 +244,80 @@
   ];
   const TOP_COUNTRIES = ['United Kingdom', 'Ireland']; // shown first for convenience
 
-  (function populateNationality() {
-    const select = document.getElementById('nationality');
+  (function populateCountrySelects() {
     const rest = COUNTRIES.filter(c => !TOP_COUNTRIES.includes(c)).sort((a, b) => a.localeCompare(b));
-    [...TOP_COUNTRIES, ...rest].forEach(name => {
-      const opt = document.createElement('option');
-      opt.value = name;
-      opt.textContent = name;
-      select.appendChild(opt);
+    const all = [...TOP_COUNTRIES, ...rest];
+    ['nationality', 'countryOfBirth'].forEach(id => {
+      const select = document.getElementById(id);
+      all.forEach(name => {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        select.appendChild(opt);
+      });
     });
   })();
+
+  // ---------- "Time in the UK" questions (shown when nationality is not United Kingdom) ----------
+  const nationalitySelect = document.getElementById('nationality');
+  const ukSection = document.getElementById('ukStatusSection');
+  const arrivalMonth = document.getElementById('arrivalMonth');
+  const arrivalYear = document.getElementById('arrivalYear');
+  const visaField = document.getElementById('visaExpiryField');
+  const visaExpiry = document.getElementById('visaExpiry');
+  const permissionRadios = [...document.querySelectorAll('input[name="workPermission"]')];
+
+  // Month and year dropdown lists
+  ['January','February','March','April','May','June','July','August','September','October','November','December']
+    .forEach((name, i) => {
+      const opt = document.createElement('option');
+      opt.value = i + 1;
+      opt.textContent = name;
+      arrivalMonth.appendChild(opt);
+    });
+  for (let y = new Date().getFullYear(); y >= 1930; y--) {
+    const opt = document.createElement('option');
+    opt.value = y;
+    opt.textContent = y;
+    arrivalYear.appendChild(opt);
+  }
+
+  // Visa expiry can't be in the past
+  (() => {
+    const t = new Date();
+    visaExpiry.min = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+  })();
+
+  const getWorkPermission = () => (permissionRadios.find(r => r.checked) || {}).value || '';
+
+  function validateArrival() {
+    const y = Number(arrivalYear.value), m = Number(arrivalMonth.value);
+    const now = new Date();
+    const inFuture = !ukSection.hidden && y && m &&
+      (y > now.getFullYear() || (y === now.getFullYear() && m > now.getMonth() + 1));
+    arrivalMonth.setCustomValidity(inFuture ? 'The arrival date cannot be in the future' : '');
+  }
+
+  function updateVisaField() {
+    const needDate = !ukSection.hidden && getWorkPermission() === 'Visa expiry date';
+    visaField.hidden = !needDate;
+    visaExpiry.required = needDate;
+  }
+
+  function updateUkSection() {
+    const show = nationalitySelect.value !== '' && nationalitySelect.value !== 'United Kingdom';
+    ukSection.hidden = !show;
+    arrivalMonth.required = show;
+    arrivalYear.required = show;
+    permissionRadios.forEach(r => { r.required = show; });
+    updateVisaField();
+    validateArrival();
+  }
+
+  nationalitySelect.addEventListener('change', updateUkSection);
+  permissionRadios.forEach(r => r.addEventListener('change', updateVisaField));
+  [arrivalMonth, arrivalYear].forEach(el => el.addEventListener('change', validateArrival));
+  updateUkSection();
 
   // ---------- Postcode format check (UK) ----------
   const UK_POSTCODE = /^(GIR 0AA|[A-Z]{1,2}\d[A-Z\d]? \d[A-Z]{2})$/;
@@ -542,6 +639,12 @@
       nationality: val('nationality'),
       countryOfBirth: val('countryOfBirth'),
       placeOfBirth: val('placeOfBirth'),
+      ...(!ukSection.hidden && {
+        arrivedUkMonth: val('arrivalMonth'),
+        arrivedUkYear: val('arrivalYear'),
+        workPermission: getWorkPermission(),
+        visaExpiryDate: getWorkPermission() === 'Visa expiry date' ? val('visaExpiry') : ''
+      }),
       previousAddresses: blocks().map(b => ({
         houseNumber: fv(b, 'houseNumber'),
         houseName: fv(b, 'houseName'),
