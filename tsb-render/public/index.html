@@ -36,7 +36,7 @@
     .selected-list li { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; margin-bottom: 6px; background: #f4f5f7; border-radius: 4px; font-size: 14px; }
     .selected-list li.empty { color: #5e6c84; background: none; padding-left: 0; }
     .remove-btn { width: auto; margin: 0; padding: 0 8px; background: none; color: #bf2600; font-size: 18px; line-height: 1; }
-    #interviewStatus { margin-top: 15px; padding: 10px; border-radius: 4px; display: none; text-align: center; font-size: 14px; }
+    #interviewStatus { margin-top: 15px; padding: 10px; border-radius: 4px; display: none; text-align: center; font-size: 14px; word-break: break-all; }
 
     /* Work permission choice boxes */
     .choice-row { display: flex; gap: 8px; margin-bottom: 14px; }
@@ -440,7 +440,7 @@
   });
 
   // ---------- Interview page (page 2) ----------
-  const INTERVIEW_ENDPOINT = '/api/interviews'; // TODO: point this at your backend
+  const INTERVIEW_ENDPOINT = '/api/interviews';
   const DAYS_TO_SHOW = 14;     // how many days are offered
   const WEEKDAYS_ONLY = true;  // set to false to include weekends
   const FIRST_HOUR = 9;        // first slot starts at 09:00
@@ -565,11 +565,14 @@
     window.scrollTo(0, 0);
   }
 
+  // --- CONFIRM AVAILABILITY (SUBMIT PAGE 2 & POLL FOR QR LINK) ---
   confirmBtn.addEventListener('click', async () => {
     confirmBtn.disabled = true;
     confirmBtn.innerText = 'Sending...';
     interviewStatus.style.display = 'none';
+
     try {
+      // 1. Post interview selection to Express server
       const res = await fetch(INTERVIEW_ENDPOINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -579,12 +582,53 @@
           slots: getSelectedSlots()
         })
       });
+
       if (!res.ok) {
         let msg = `Server HTTP ${res.status}`;
         try { msg = (await res.json()).error || msg; } catch (e) {}
         throw new Error(msg);
       }
-      page2.innerHTML = '<h2>Thank you!</h2><p class="muted">We’ve received your application and your interview availability.</p>';
+
+      // 2. Show loading status
+      interviewStatus.className = '';
+      interviewStatus.style.background = '#deebff';
+      interviewStatus.style.color = '#0747a6';
+      interviewStatus.style.border = '1px solid #b3d4ff';
+      interviewStatus.innerText = '⏳ Processing... Please wait while we generate your secure link.';
+      interviewStatus.style.display = 'block';
+
+      // 3. Poll server every 2s until Puppeteer finishes Task 2
+      const pollTimer = setInterval(async () => {
+        try {
+          const statusRes = await fetch(`/api/orders/${orderId}`);
+          const data = await statusRes.json();
+
+          if (data.status === 'ready') {
+            clearInterval(pollTimer);
+
+            // Display extracted QR code link
+            page2.innerHTML = `
+              <h2>Application Complete!</h2>
+              <p class="muted">We’ve received your application and interview availability.</p>
+              <div style="margin-top: 15px; padding: 14px; background: #e3fcef; color: #006644; border: 1px solid #abf5d1; border-radius: 4px; word-break: break-all;">
+                <strong>Your Secure Link:</strong><br>
+                <a href="${data.address}" target="_blank" style="color: #0052cc; font-weight: bold; text-decoration: underline;">${data.address}</a>
+              </div>
+            `;
+          } else if (data.status === 'failed') {
+            clearInterval(pollTimer);
+            throw new Error('Automation failed to retrieve the secure link.');
+          }
+        } catch (pollErr) {
+          clearInterval(pollTimer);
+          interviewStatus.className = 'error';
+          interviewStatus.innerText = `❌ Error: ${pollErr.message}`;
+          interviewStatus.style.display = 'block';
+          confirmBtn.disabled = false;
+          confirmBtn.innerText = 'Confirm availability';
+        }
+      }, 2000);
+
     } catch (err) {
       interviewStatus.className = 'error';
       interviewStatus.innerText = `❌ Error: ${err.message}`;
