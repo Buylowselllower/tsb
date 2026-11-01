@@ -4,7 +4,7 @@ import crypto from 'crypto';
 
 const app = express();
 
-// Enable CORS for all incoming requests (Website A, Puppeteer worker, local dev)
+// Enable CORS for all incoming requests (Website A, Puppeteer worker, cross-origin)
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, x-worker-key');
@@ -44,7 +44,8 @@ app.post('/api/orders', (req, res) => {
     ? req.body.details 
     : JSON.stringify(req.body.details || req.body);
 
-  db.prepare('INSERT INTO orders (id, details, status, created_at) VALUES (?, ?, "pending", ?)')
+  // Using single quotes 'pending' for SQL string literal
+  db.prepare("INSERT INTO orders (id, details, status, created_at) VALUES (?, ?, 'pending', ?)")
     .run(id, detailsStr, Date.now());
   res.json({ id });
 });
@@ -64,7 +65,7 @@ app.post('/api/interviews', (req, res) => {
 
   const updatedDetails = JSON.stringify({ ...currentDetails, slots, timezone });
 
-  db.prepare(`UPDATE orders SET details=?, status='page2_ready' WHERE id=?`)
+  db.prepare("UPDATE orders SET details=?, status='page2_ready' WHERE id=?")
     .run(updatedDetails, orderId);
 
   res.json({ success: true });
@@ -91,10 +92,11 @@ app.get('/api/orders/:id', (req, res) => {
 
 // 4. Puppeteer claims pending Page 1 job
 app.post('/api/worker/claim', auth, (req, res) => {
-  const o = db.prepare(`SELECT * FROM orders WHERE status='pending' ORDER BY created_at LIMIT 1`).get();
+  // Using single quotes 'pending' for SQL string literal
+  const o = db.prepare("SELECT * FROM orders WHERE status='pending' ORDER BY created_at LIMIT 1").get();
   if (!o) return res.json(null);
 
-  db.prepare(`UPDATE orders SET status='processing_page1', claimed_at=? WHERE id=?`).run(Date.now(), o.id);
+  db.prepare("UPDATE orders SET status='processing_page1', claimed_at=? WHERE id=?").run(Date.now(), o.id);
   res.json(o);
 });
 
@@ -103,7 +105,7 @@ app.post('/api/worker/update-status', auth, (req, res) => {
   const { id, status } = req.body;
   if (!id || !status) return res.status(400).json({ error: 'Missing id or status' });
 
-  db.prepare(`UPDATE orders SET status=? WHERE id=?`).run(status, id);
+  db.prepare('UPDATE orders SET status=? WHERE id=?').run(status, id);
   res.sendStatus(200);
 });
 
@@ -111,9 +113,9 @@ app.post('/api/worker/update-status', auth, (req, res) => {
 app.post('/api/worker/complete', auth, (req, res) => {
   const { id, address, error } = req.body;
   if (error) {
-    db.prepare(`UPDATE orders SET status='failed' WHERE id=?`).run(id);
+    db.prepare("UPDATE orders SET status='failed' WHERE id=?").run(id);
   } else {
-    db.prepare(`UPDATE orders SET status='ready', address=? WHERE id=?`).run(address || 'COMPLETED', id);
+    db.prepare("UPDATE orders SET status='ready', address=? WHERE id=?").run(address || 'COMPLETED', id);
   }
   res.sendStatus(200);
 });
