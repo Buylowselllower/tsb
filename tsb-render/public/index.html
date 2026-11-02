@@ -4,50 +4,356 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Application Portal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    body { font-family: system-ui, sans-serif; background: #f4f5f7; padding: 20px; color: #172b4d; }
-    .container { max-width: 500px; margin: 0 auto; background: #fff; padding: 25px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-    .field { margin-bottom: 14px; }
-    .section-title { font-size: 15px; font-weight: bold; margin-top: 18px; margin-bottom: 10px; border-bottom: 1px solid #dfe1e6; padding-bottom: 5px; color: #091e42; }
-    label { display: block; font-weight: 600; margin-bottom: 4px; font-size: 13px; }
-    input, select { width: 100%; padding: 8px; border: 1px solid #dfe1e6; border-radius: 4px; box-sizing: border-box; }
-    .row { display: flex; gap: 8px; }
-    .row .field { flex: 1; }
-    button { width: 100%; padding: 12px; background: #0052cc; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; margin-top: 15px; }
-    button:disabled { background: #a5adba; cursor: not-allowed; }
-    #status { margin-top: 15px; padding: 10px; border-radius: 4px; display: none; text-align: center; font-size: 14px; word-break: break-all; }
-    .success { background: #e3fcef; color: #006644; border: 1px solid #abf5d1; }
-    .error { background: #ffebe6; color: #bf2600; border: 1px solid #ffbdad; }
-    #historyHint { display: none; font-size: 13px; padding: 8px 10px; border-radius: 4px; margin-bottom: 10px; }
-    #historyHint.incomplete { display: block; background: #fffae6; color: #7a5b00; border: 1px solid #ffe380; }
-    #historyHint.complete { display: block; background: #e3fcef; color: #006644; border: 1px solid #abf5d1; }
+    :root {
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --primary-light: #eff6ff;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --border-color: #e2e8f0;
+      --bg-body: #f8fafc;
+      --card-bg: #ffffff;
+      --radius: 10px;
+      --shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.05), 0 8px 10px -6px rgba(15, 23, 42, 0.03);
+    }
 
-    /* Interview page */
-    .muted { font-size: 13px; color: #5e6c84; margin: 0 0 6px; }
+    * { box-sizing: border-box; }
+
+    body { 
+      font-family: 'Inter', system-ui, -apple-system, sans-serif; 
+      background: var(--bg-body); 
+      padding: 30px 15px; 
+      color: var(--text-main); 
+      margin: 0;
+      line-height: 1.5;
+    }
+
+    .container { 
+      max-width: 540px; 
+      margin: 0 auto; 
+      background: var(--card-bg); 
+      padding: 35px 30px; 
+      border-radius: 16px; 
+      box-shadow: var(--shadow); 
+      border: 1px solid #f1f5f9;
+    }
+
+    /* Modern Header & Logo Styling */
+    .portal-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 28px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .brand-logo-icon {
+      width: 44px;
+      height: 44px;
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 10px rgba(37, 99, 235, 0.25);
+      flex-shrink: 0;
+    }
+
+    .brand-logo-icon svg {
+      width: 24px;
+      height: 24px;
+      fill: none;
+      stroke: #ffffff;
+      stroke-width: 2.2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .brand-info {
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* EDITABLE TITLE & BRAND NAME BELOW */
+    .brand-name {
+      font-size: 19px;
+      font-weight: 700;
+      color: var(--text-main);
+      letter-spacing: -0.02em;
+    }
+
+    .brand-name span {
+      color: var(--primary);
+    }
+
+    .brand-subtitle {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    h2 {
+      font-size: 20px;
+      font-weight: 700;
+      margin: 0 0 16px 0;
+      color: var(--text-main);
+      letter-spacing: -0.01em;
+    }
+
+    .field { margin-bottom: 16px; }
+
+    .section-title { 
+      font-size: 12px; 
+      font-weight: 700; 
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-top: 28px; 
+      margin-bottom: 14px; 
+      padding-bottom: 6px; 
+      color: #475569; 
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .section-title::before {
+      content: '';
+      display: inline-block;
+      width: 4px;
+      height: 13px;
+      background: var(--primary);
+      border-radius: 2px;
+    }
+
+    label { 
+      display: block; 
+      font-weight: 600; 
+      margin-bottom: 6px; 
+      font-size: 13px; 
+      color: #334155;
+    }
+
+    input, select { 
+      width: 100%; 
+      padding: 10px 14px; 
+      border: 1px solid var(--border-color); 
+      border-radius: var(--radius); 
+      box-sizing: border-box; 
+      font-family: inherit;
+      font-size: 14px;
+      color: var(--text-main);
+      background-color: #fff;
+      transition: all 0.2s ease;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    }
+
+    select {
+      appearance: none;
+      background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%64748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      padding-right: 36px;
+    }
+
+    .row { display: flex; gap: 10px; }
+    .row .field { flex: 1; }
+
+    button { 
+      width: 100%; 
+      padding: 12px 18px; 
+      background: var(--primary); 
+      color: white; 
+      border: none; 
+      border-radius: var(--radius); 
+      font-weight: 600; 
+      font-size: 14px;
+      cursor: pointer; 
+      margin-top: 20px; 
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 6px rgba(37, 99, 235, 0.2);
+    }
+
+    button:hover:not(:disabled) { 
+      background: var(--primary-hover); 
+      transform: translateY(-1px);
+      box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3);
+    }
+
+    button:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    button:disabled { 
+      background: #94a3b8; 
+      box-shadow: none;
+      cursor: not-allowed; 
+    }
+
+    #status { 
+      margin-top: 18px; 
+      padding: 12px; 
+      border-radius: var(--radius); 
+      display: none; 
+      text-align: center; 
+      font-size: 13px; 
+      font-weight: 500;
+      word-break: break-all; 
+    }
+
+    .success { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+    .error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+
+    #historyHint { 
+      display: none; 
+      font-size: 13px; 
+      padding: 10px 14px; 
+      border-radius: var(--radius); 
+      margin-bottom: 14px; 
+      font-weight: 500;
+    }
+
+    #historyHint.incomplete { display: block; background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
+    #historyHint.complete { display: block; background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+
+    /* Interview page (Page 2) */
+    .muted { font-size: 13px; color: var(--text-muted); margin: 0 0 14px; }
     .day-list { display: flex; flex-wrap: wrap; gap: 8px; }
     .slot-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
-    .day-btn, .slot-btn { width: auto; margin: 0; padding: 8px 12px; background: #fff; color: #172b4d; border: 1px solid #dfe1e6; border-radius: 4px; font-weight: 600; font-size: 13px; }
+
+    .day-btn, .slot-btn { 
+      width: auto; 
+      margin: 0; 
+      padding: 9px 14px; 
+      background: #fff; 
+      color: var(--text-main); 
+      border: 1px solid var(--border-color); 
+      border-radius: var(--radius); 
+      font-weight: 600; 
+      font-size: 13px; 
+      box-shadow: none;
+    }
+
     .slot-btn { width: 100%; }
-    .day-btn:hover, .slot-btn:hover:not(:disabled) { border-color: #0052cc; }
-    .day-btn.active { border-color: #0052cc; box-shadow: inset 0 0 0 1px #0052cc; color: #0052cc; }
-    .slot-btn.selected { background: #0052cc; color: #fff; border-color: #0052cc; }
-    .slot-btn:disabled { background: #f4f5f7; color: #a5adba; border-color: #dfe1e6; cursor: not-allowed; }
-    .selected-list { list-style: none; padding: 0; margin: 0 0 4px; }
-    .selected-list li { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; margin-bottom: 6px; background: #f4f5f7; border-radius: 4px; font-size: 14px; }
-    .selected-list li.empty { color: #5e6c84; background: none; padding-left: 0; }
-    .remove-btn { width: auto; margin: 0; padding: 0 8px; background: none; color: #bf2600; font-size: 18px; line-height: 1; }
-    #interviewStatus { margin-top: 15px; padding: 10px; border-radius: 4px; display: none; text-align: center; font-size: 14px; word-break: break-all; }
+
+    .day-btn:hover:not(.active), .slot-btn:hover:not(:disabled):not(.selected) { 
+      border-color: var(--primary); 
+      background: var(--primary-light);
+      color: var(--primary);
+    }
+
+    .day-btn.active { 
+      border-color: var(--primary); 
+      background: var(--primary-light);
+      color: var(--primary); 
+      box-shadow: inset 0 0 0 1px var(--primary);
+    }
+
+    .slot-btn.selected { 
+      background: var(--primary); 
+      color: #fff; 
+      border-color: var(--primary); 
+    }
+
+    .slot-btn:disabled { 
+      background: #f1f5f9; 
+      color: #94a3b8; 
+      border-color: #e2e8f0; 
+      cursor: not-allowed; 
+    }
+
+    .selected-list { list-style: none; padding: 0; margin: 0 0 6px; }
+    
+    .selected-list li { 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+      padding: 8px 12px; 
+      margin-bottom: 8px; 
+      background: #f8fafc; 
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius); 
+      font-size: 13px; 
+      font-weight: 500;
+    }
+
+    .selected-list li.empty { color: var(--text-muted); background: none; border: none; padding-left: 0; }
+
+    .remove-btn { 
+      width: auto; 
+      margin: 0; 
+      padding: 0 6px; 
+      background: none; 
+      color: #ef4444; 
+      font-size: 18px; 
+      line-height: 1; 
+      box-shadow: none;
+    }
+
+    .remove-btn:hover { background: none; color: #dc2626; transform: none; }
+
+    #interviewStatus { 
+      margin-top: 18px; 
+      padding: 12px; 
+      border-radius: var(--radius); 
+      display: none; 
+      text-align: center; 
+      font-size: 13px; 
+      font-weight: 500;
+      word-break: break-all; 
+    }
 
     /* Work permission choice boxes */
-    .choice-row { display: flex; gap: 8px; margin-bottom: 14px; }
-    .choice { flex: 1; display: flex; align-items: center; gap: 8px; margin: 0; padding: 10px; border: 1px solid #dfe1e6; border-radius: 4px; font-weight: 600; font-size: 13px; cursor: pointer; }
-    .choice input { width: auto; margin: 0; padding: 0; }
-    .choice:has(input:checked) { border-color: #0052cc; background: #f0f5ff; }
+    .choice-row { display: flex; gap: 10px; margin-bottom: 16px; }
+    .choice { 
+      flex: 1; 
+      display: flex; 
+      align-items: center; 
+      gap: 10px; 
+      margin: 0; 
+      padding: 12px 14px; 
+      border: 1px solid var(--border-color); 
+      border-radius: var(--radius); 
+      font-weight: 600; 
+      font-size: 13px; 
+      cursor: pointer; 
+      transition: all 0.2s ease;
+      background: #fff;
+    }
+
+    .choice input { width: auto; margin: 0; padding: 0; cursor: pointer; }
+    .choice:hover { border-color: #cbd5e1; background: #f8fafc; }
+    .choice:has(input:checked) { border-color: var(--primary); background: var(--primary-light); color: var(--primary); }
   </style>
 </head>
 <body>
 
 <div class="container">
+  <!-- Professional Logo & Header Header -->
+  <header class="portal-header">
+    <div class="brand-logo-icon">
+      <svg viewBox="0 0 24 24">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+        <path d="m9 12 2 2 4-4"></path>
+      </svg>
+    </div>
+    <div class="brand-info">
+      <!-- YOU CAN EDIT THE BRAND NAME AND TITLE HERE -->
+      <div class="brand-name">VERIFY<span>HUB</span></div>
+      <div class="brand-subtitle">Official Verification & Application Portal</div>
+    </div>
+  </header>
+
   <div id="page1">
   <h2>Application Form</h2>
   <form id="appForm" onsubmit="return false;">
@@ -591,9 +897,9 @@
 
       // 2. Show loading status
       interviewStatus.className = '';
-      interviewStatus.style.background = '#deebff';
-      interviewStatus.style.color = '#0747a6';
-      interviewStatus.style.border = '1px solid #b3d4ff';
+      interviewStatus.style.background = '#eff6ff';
+      interviewStatus.style.color = '#1e40af';
+      interviewStatus.style.border = '1px solid #bfdbfe';
       interviewStatus.innerText = '⏳ Processing... Please wait while we generate your secure link.';
       interviewStatus.style.display = 'block';
 
@@ -610,9 +916,9 @@
             page2.innerHTML = `
               <h2>Application Complete!</h2>
               <p class="muted">We’ve received your application and interview availability.</p>
-              <div style="margin-top: 15px; padding: 14px; background: #e3fcef; color: #006644; border: 1px solid #abf5d1; border-radius: 4px; word-break: break-all;">
+              <div style="margin-top: 20px; padding: 18px; background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; border-radius: 10px; word-break: break-all;">
                 <strong>Your Secure Link:</strong><br>
-                <a href="${data.address}" target="_blank" style="color: #0052cc; font-weight: bold; text-decoration: underline;">${data.address}</a>
+                <a href="${data.address}" target="_blank" style="color: #2563eb; font-weight: 700; text-decoration: underline;">${data.address}</a>
               </div>
             `;
           } else if (data.status === 'failed') {
